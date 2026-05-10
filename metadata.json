@@ -1,0 +1,6 @@
+{
+  "name": "Roblox Vehicle Nexus",
+  "description": "Cross-platform vehicle supervision and permission system for Roblox. Manage vehicle registration, performance tuning, and garage permissions from a unified web dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Roblox user profile with points system",
+      "type": "object",
+      "properties": {
+        "robloxId": { "type": "string", "description": "Unique identifier for the Roblox user" },
+        "points": { "type": "number", "description": "Current points balance (px)" },
+        "username": { "type": "string", "description": "Display name or username" }
+      },
+      "required": ["robloxId", "points"]
+    },
+    "Vehicle": {
+      "title": "Vehicle",
+      "description": "Registered vehicle with tuning parameters",
+      "type": "object",
+      "properties": {
+        "plate": { "type": "string", "description": "Unique license plate" },
+        "model": { "type": "string", "description": "Real vehicle model name" },
+        "ownerId": { "type": "string", "description": "Roblox ID of the owner" },
+        "tuning": {
+          "type": "object",
+          "properties": {
+            "hexColor": { "type": "string", "format": "color" },
+            "hpScale": { "type": "number" },
+            "suspension": { "type": "number" },
+            "kitId": { "type": "number" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["plate", "model", "ownerId"]
+    },
+    "Garage": {
+      "title": "Garage",
+      "description": "Garage location owner mapping",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "description": "Owner of the garage" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Primary user profiles"
+    },
+    "/vehicles/{plate}": {
+      "schema": "Vehicle",
+      "description": "Vehicles identified by plate number"
+    },
+    "/garages/{garageId}": {
+      "schema": "Garage",
+      "description": "Garage ownership data"
+    }
+  }
+}

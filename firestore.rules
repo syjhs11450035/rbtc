@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User Profile Rules
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.robloxId is string && data.robloxId.size() <= 32 &&
+               data.points is number && data.points >= 0 &&
+               data.username is string && data.username.size() <= 64;
+      }
+
+      allow get: if isSignedIn();
+      allow create: if isOwner(userId) && 
+                      isValidUser(incoming()) && 
+                      incoming().points == 15; // Initial 15px
+      
+      allow update: if isOwner(userId) && 
+                      isValidUser(incoming()) &&
+                      // Points can only be changed by system or in specific ways
+                      // For this demo, we allow update if keys are right
+                      incoming().diff(existing()).affectedKeys().hasOnly(['points', 'username']);
+    }
+
+    // Vehicle Rules
+    match /vehicles/{plate} {
+      function isValidVehicle(data) {
+        return data.plate is string && data.plate.size() <= 20 &&
+               data.model is string && data.model.size() <= 64 &&
+               data.ownerId is string && data.ownerId.size() <= 128 &&
+               data.tuning is map;
+      }
+
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      
+      allow create: if isSignedIn() && 
+                      isValidVehicle(incoming()) && 
+                      incoming().ownerId == request.auth.uid &&
+                      isValidId(plate);
+
+      allow update: if isSignedIn() && 
+                      existing().ownerId == request.auth.uid &&
+                      isValidVehicle(incoming()) &&
+                      incoming().ownerId == existing().ownerId &&
+                      incoming().plate == existing().plate &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['tuning', 'updatedAt']);
+
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+    }
+
+    // Garages Rules
+    match /garages/{garageId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+  }
+}

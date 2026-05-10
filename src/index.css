@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-nexus-blue: #0ea5e9;
+  --color-nexus-slate: #0f172a;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .hardware-card {
+    @apply bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300;
+  }
+  
+  .tech-label {
+    @apply text-[10px] font-black uppercase tracking-[0.15em] text-slate-400;
+  }
+  
+  .mono-data {
+    @apply font-mono text-[11px] tracking-tight;
+  }
+}
