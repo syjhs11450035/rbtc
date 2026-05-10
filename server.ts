@@ -6,7 +6,7 @@ import { createServer as createViteServer } from "vite";
 import { initializeApp, cert, getApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import firebaseConfig from "./firebase-applet-config.json" assert { type: "json" };
-import { startDiscordBot } from "./src/bot/index.js";
+import { startDiscordBot, getBotStatus } from "./src/bot/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,15 +43,24 @@ async function startServer() {
     next();
   };
 
+  // Standard API Response Helper
+  const sendRes = (res: express.Response, data: any, status = 200) => {
+    return res.status(status).json({
+      success: status < 400,
+      data,
+      timestamp: new Date().toISOString()
+    });
+  };
+
   // API Routes
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+    sendRes(res, { status: "ok" });
   });
 
   // Get public config (Developer use)
   app.get("/api/config", (req, res) => {
-    res.json({ 
-      robloxApiKey: process.env.ROBLOX_API_KEY || "NOT_SET",
+    sendRes(res, { 
+      robloxApiKey: process.env.ROBLOX_API_KEY ? "CONFIGURED" : "NOT_SET",
       environment: process.env.NODE_ENV || "development"
     });
   });
@@ -63,13 +72,13 @@ async function startServer() {
       const vehicleDoc = await getDb().collection("vehicles").doc(plate).get();
 
       if (!vehicleDoc.exists) {
-        return res.status(404).json({ error: "Vehicle not found" });
+        return sendRes(res, { error: "Vehicle not found" }, 404);
       }
 
-      res.json(vehicleDoc.data());
+      sendRes(res, vehicleDoc.data());
     } catch (error) {
       console.error("API Error (Vehicle):", error);
-      res.status(500).json({ error: "Internal server error" });
+      sendRes(res, { error: "Internal server error" }, 500);
     }
   });
 
@@ -79,12 +88,12 @@ async function startServer() {
       const { plate, driverId, garageOwnerId } = req.body;
 
       if (!plate || !driverId || !garageOwnerId) {
-        return res.status(400).json({ error: "Missing required fields" });
+        return sendRes(res, { error: "Missing required fields" }, 400);
       }
 
       const vehicleDoc = await getDb().collection("vehicles").doc(plate).get();
       if (!vehicleDoc.exists) {
-        return res.status(404).json({ error: "Vehicle record not found" });
+        return sendRes(res, { error: "Vehicle record not found" }, 404);
       }
 
       const vehicleData = vehicleDoc.data();
@@ -92,25 +101,25 @@ async function startServer() {
       // Logic: 
       // 1. Driver must be the vehicle owner
       // 2. Driver must be the garage owner (or garageOwnerId must match vehicle owner)
-      const isOwner = vehicleData.ownerId === driverId;
+      const isOwner = vehicleData.ownerId === driverId || vehicleData.ownerRobloxId === driverId;
       const isGarageOwner = driverId === garageOwnerId;
 
       if (isOwner && isGarageOwner) {
-        res.json({ 
+        sendRes(res, { 
           allowed: true, 
           message: "Access granted",
           action: "open_door" 
         });
       } else {
-        res.json({ 
+        sendRes(res, { 
           allowed: false, 
           message: "Identity mismatch",
           debug: { isOwner, isGarageOwner } 
-        });
+        }, 403);
       }
     } catch (error) {
       console.error("API Error (Garage):", error);
-      res.status(500).json({ error: "Internal server error" });
+      sendRes(res, { error: "Internal server error" }, 500);
     }
   });
 
@@ -122,15 +131,20 @@ async function startServer() {
       const snapshot = await usersRef.where("robloxId", "==", robloxId).limit(1).get();
 
       if (snapshot.empty) {
-        return res.status(404).json({ error: "User not found" });
+        return sendRes(res, { error: "User not found" }, 404);
       }
 
       const userData = snapshot.docs[0].data();
-      res.json(userData);
+      sendRes(res, userData);
     } catch (error) {
       console.error("API Error (User):", error);
-      res.status(500).json({ error: "Internal server error" });
+      sendRes(res, { error: "Internal server error" }, 500);
     }
+  });
+
+  // Get Discord Bot Status
+  app.get("/api/bot/status", (req, res) => {
+    res.json(getBotStatus());
   });
 
   // Vite middleware for development
